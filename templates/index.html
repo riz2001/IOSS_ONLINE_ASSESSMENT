@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>URL Shortener</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f7fc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .short-url-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #eef3ff;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .short-url-box a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .history {
+            margin-top: 30px;
+        }
+        .history-item {
+            padding: 10px;
+            background: #fafafa;
+            border-bottom: 1px solid #ddd;
+        }
+        .history-item a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        canvas {
+            display: block;
+            margin: 10px auto;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>URL Shortener</h1>
+    <div class="container">
+        <input type="text" id="original_url" placeholder="Enter your long URL here">
+        <button onclick="shortenURL()">Shorten URL</button>
+
+        <div id="result" class="short-url-box" style="display:none;">
+            <p><strong>Short URL:</strong> <a id="short_link" href="#" target="_blank"></a></p>
+            <button onclick="copyToClipboard()">Copy to Clipboard</button>
+            <canvas id="qrcode"></canvas>
+        </div>
+
+        <div class="history">
+            <h3>Recent Shortened URLs</h3>
+            <div id="history_list"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+    <script>
+        const API_BASE = window.location.origin;
+
+        async function shortenURL() {
+            let url = document.getElementById("original_url").value.trim();
+            if (!url) {
+                alert("Please enter a URL");
+                return;
+            }
+
+            let res = await fetch(API_BASE + "/shorten", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ original_url: url })
+            });
+
+            let data = await res.json();
+            if (data.short_url) {
+                document.getElementById("result").style.display = "block";
+                document.getElementById("short_link").textContent = data.short_url;
+                document.getElementById("short_link").href = data.short_url;
+                QRCode.toCanvas(document.getElementById('qrcode'), data.short_url);
+                loadHistory();
+            }
+        }
+
+        function copyToClipboard() {
+            let link = document.getElementById("short_link").href;
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Copied to clipboard!");
+            });
+        }
+
+        async function loadHistory() {
+            let res = await fetch(API_BASE + "/history");
+            let data = await res.json();
+            let list = document.getElementById("history_list");
+            list.innerHTML = "";
+            data.forEach(item => {
+                let div = document.createElement("div");
+                div.className = "history-item";
+                div.innerHTML = `<a href="${item.short_url}" target="_blank">${item.short_url}</a> → ${item.original_url}`;
+                list.appendChild(div);
+            });
+        }
+
+        window.onload = loadHistory;
+    </script>
+
+</body>
+</html>
